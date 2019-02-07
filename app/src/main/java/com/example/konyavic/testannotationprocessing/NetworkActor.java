@@ -3,7 +3,6 @@ package com.example.konyavic.testannotationprocessing;
 import android.util.Log;
 
 import com.example.konyavic.library.AbstractActor;
-import com.example.konyavic.library.AbstractStage;
 import com.example.konyavic.library.ActorClass;
 import com.example.konyavic.library.ActorMethod;
 

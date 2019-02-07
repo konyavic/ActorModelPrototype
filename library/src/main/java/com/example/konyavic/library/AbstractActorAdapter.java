@@ -21,7 +21,11 @@ public abstract class AbstractActorAdapter {
         });
     }
 
-    <T> Future<T> syncFromAnotherActor(final AbstractStage.SyncedCall<T> call) {
+    public interface SyncedCall<T> {
+        T run(Object o);
+    }
+
+    <T> Future<T> syncFromAnotherActor(final SyncedCall<T> call) {
         Future<T> result = mExecutorService.submit(new Callable<T>() {
             // TODO: collect execptions
             @Override
@@ -36,7 +40,7 @@ public abstract class AbstractActorAdapter {
         return (T) mActor;
     }
 
-    public void setStage(AbstractStage stage) {
+    public void setStage(Object stage) {
         ((AbstractActor) mActor).mStage = new WeakReference<>(stage);
     }
 }

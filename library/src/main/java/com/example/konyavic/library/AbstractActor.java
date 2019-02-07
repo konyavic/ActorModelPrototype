@@ -4,13 +4,13 @@ import java.lang.ref.WeakReference;
 import java.util.concurrent.ExecutionException;
 
 public abstract class AbstractActor {
-    WeakReference<AbstractStage> mStage;
+    WeakReference<Object> mStage;
 
-    protected AbstractStage getStage() {
+    protected Object getStage() {
         return mStage.get();
     }
 
-    protected <T> T sync(Object actor, AbstractStage.SyncedCall<T> call) throws ExecutionException, InterruptedException {
-        return getStage().sync(actor, call);
+    protected <T> T sync(Object actor, AbstractActorAdapter.SyncedCall<T> call) throws ExecutionException, InterruptedException {
+        return ((AbstractActorAdapter)actor).syncFromAnotherActor(call).get();
     }
 }

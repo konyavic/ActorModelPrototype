@@ -1,9 +1,8 @@
 package com.example.konyavic.testannotationprocessing;
 
 import com.example.konyavic.library.AbstractActorAdapter;
-import com.example.konyavic.library.AbstractStage;
 
-public class MainStage extends AbstractStage implements MainStageInterface{
+public class MainStage implements MainStageInterface{
     private NetworkActorInterface mNetworkActor;
     private UploaderActorInterface mUploaderActor;
 

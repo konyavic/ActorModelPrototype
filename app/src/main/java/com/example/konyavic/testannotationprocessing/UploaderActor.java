@@ -3,9 +3,10 @@ package com.example.konyavic.testannotationprocessing;
 import android.util.Log;
 
 import com.example.konyavic.library.AbstractActor;
+import com.example.konyavic.library.AbstractActorAdapter;
 import com.example.konyavic.library.ActorClass;
-import com.example.konyavic.library.AbstractStage;
 import com.example.konyavic.library.ActorMethod;
+import com.example.konyavic.library.ActorRef;
 
 import java.io.File;
 import java.util.concurrent.ExecutionException;
@@ -13,6 +14,9 @@ import java.util.concurrent.ExecutionException;
 @ActorClass
 public class UploaderActor extends AbstractActor implements UploaderActorInterface {
     private int mParam;
+
+    @ActorRef
+    NetworkActorInterface networkActor = null;
 
     UploaderActor(int param) {
         mParam = param;
@@ -32,7 +36,7 @@ public class UploaderActor extends AbstractActor implements UploaderActorInterfa
         // putFile synchronously
         Log.d("testannotationprocessing", "UploaderActor#uploadFiles sync call NetworkActor");
         try {
-            Boolean result = sync(stage.getNetworkActor(), new AbstractStage.SyncedCall<Boolean>() {
+            Boolean result = sync(stage.getNetworkActor(), new AbstractActorAdapter.SyncedCall<Boolean>() {
                 @Override
                 public Boolean run(Object o) {
                     NetworkActor networkAdapter = (NetworkActor) o;
