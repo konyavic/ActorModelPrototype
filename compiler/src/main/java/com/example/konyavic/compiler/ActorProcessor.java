@@ -1,18 +1,19 @@
 package com.example.konyavic.compiler;
 
-import com.example.konyavic.library.Actor;
+import com.example.konyavic.library.AbstractActorAdapter;
+import com.example.konyavic.library.ActorClass;
 import com.example.konyavic.library.ActorMethod;
 import com.squareup.javapoet.ClassName;
-import com.squareup.javapoet.CodeBlock;
 import com.squareup.javapoet.FieldSpec;
 import com.squareup.javapoet.JavaFile;
 import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.ParameterSpec;
-import com.squareup.javapoet.ParameterizedTypeName;
+import com.squareup.javapoet.TypeName;
 import com.squareup.javapoet.TypeSpec;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.lang.reflect.Type;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -28,22 +29,26 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
 import javax.tools.JavaFileObject;
 
 
 @SupportedAnnotationTypes({
-        "com.example.konyavic.library.Actor",
+        "com.example.konyavic.library.ActorClass",
         "com.example.konyavic.library.ActorMethod"
 })
 public final class ActorProcessor extends AbstractProcessor {
 
     @Override
     public boolean process(Set<? extends TypeElement> set, RoundEnvironment roundEnvironment) {
+        System.out.println("ActorProcessor#process");
         System.out.println("enter ActorProcessor");
         Map<Element, Collection<ExecutableElement>> actorMethodMap = new HashMap<>();
 
-        Collection<? extends Element> actorElements = roundEnvironment.getElementsAnnotatedWith(Actor.class);
+        Collection<? extends Element> actorElements = roundEnvironment.getElementsAnnotatedWith(ActorClass.class);
         for (Element e : actorElements) {
+            System.out.println("# ActorClass:");
             System.out.println(e.getSimpleName());
             System.out.println(e.getKind());
             System.out.println(e.getEnclosedElements());
@@ -52,6 +57,7 @@ public final class ActorProcessor extends AbstractProcessor {
 
         Collection<? extends Element> actorMethodElements = roundEnvironment.getElementsAnnotatedWith(ActorMethod.class);
         for (Element e : actorMethodElements) {
+            System.out.println("# ActorMethod:");
             System.out.println(e.getSimpleName());
             System.out.println(e.getKind());
             System.out.println(e.getEnclosedElements());
@@ -70,63 +76,59 @@ public final class ActorProcessor extends AbstractProcessor {
         }
 
         for (Element actor : actorMethodMap.keySet()) {
-            try {
-                buildActor(actor, actorMethodMap.get(actor));
-            } catch (ClassNotFoundException e) {
-                e.printStackTrace();
-            }
+            generateActorAdapter(actor, actorMethodMap.get(actor));
         }
 
         return true;
     }
 
-    void buildActor(Element actor, Collection<ExecutableElement> methods) throws ClassNotFoundException {
-        System.out.println("build " + actor.getAnnotation(Actor.class).name());
-        for (Element method : methods) {
-            System.out.println("    method: " + method);
-        }
+    void generateActorAdapter(Element actorClass, Collection<ExecutableElement> actorMethods) {
+        System.out.println("build " + actorClass.getSimpleName());
 
-        final String actorClassName = actor.getAnnotation(Actor.class).name();
-        final String actorInterfaceName = actor.getAnnotation(Actor.class).implementing();
-        final String packageName = actor.getEnclosingElement().toString();
+        final String adaptorClassName = actorClass.getSimpleName() + "Adaptor";
+        final String adaptorInterfaceName = actorClass.getSimpleName() + "Interface";
+        final String adaptorPackageName = actorClass.getEnclosingElement().toString();
 
-        List<MethodSpec> methodSpecList = new LinkedList<>();
-        for (ExecutableElement method : methods) {
-            System.out.println(method.getReturnType());
-            List<String> param = new LinkedList<>();
+        LinkedList<MethodSpec> methodSpecList = new LinkedList<>();
+        for (ExecutableElement method : actorMethods) {
+            LinkedList<String> param = new LinkedList<>();
             for (VariableElement v : method.getParameters()) {
-                System.out.println(v.getSimpleName());
-                System.out.println(v.getModifiers());
-                System.out.println(v.getClass());
-
-                ((LinkedList<String>) param).addLast(v.getSimpleName().toString());
+                param.addLast(v.getSimpleName().toString());
             }
 
+            String returnStatement = method.getReturnType().getKind().equals(TypeKind.VOID)? "return" : "return null";
             MethodSpec methodSpec = MethodSpec.overriding(method)
-                    .addCode("new Thread(new Runnable() { public void run() {\n" +
-                            "mImpl." + method.getSimpleName() + "(" + String.join(",", param) + ");\n" +
-                            "} }, \"another-thread\").start();\n")
+                    .addCode(
+                            "    mExecutorService.execute(new Runnable() {\n" +
+                            "        public void run() {\n" +
+                            "            getActor(" + actorClass.getSimpleName() + ".class)." + method.getSimpleName() + "(" + String.join(",", param) + ");\n" +
+                            "        }\n" +
+                            "    });\n" +
+                            "    " + returnStatement + ";\n"
+                    )
                     .build();
-            ((LinkedList<MethodSpec>) methodSpecList).addLast(methodSpec);
+            methodSpecList.addLast(methodSpec);
         }
 
-        TypeSpec actorType = TypeSpec.classBuilder(actorClassName)
+        MethodSpec constructorSpec = MethodSpec.constructorBuilder()
+                .addModifiers(Modifier.PUBLIC)
+                .addParameter(ParameterSpec.builder(TypeName.OBJECT, "actor", Modifier.FINAL).build())
+                .addCode("super(actor);")
+                .build();
+        methodSpecList.addLast(constructorSpec);
+
+        TypeSpec actorType = TypeSpec.classBuilder(adaptorClassName)
                 .addModifiers(Modifier.FINAL)
-                .addSuperinterface(ClassName.bestGuess(actorInterfaceName))
-                .addField(FieldSpec.builder(ClassName.bestGuess(actor.getSimpleName().toString()), "mImpl", Modifier.FINAL, Modifier.PRIVATE).build())
+                .superclass(ClassName.get(AbstractActorAdapter.class))
+                .addSuperinterface(ClassName.bestGuess(adaptorInterfaceName))
                 .addMethods(methodSpecList)
-                .addMethod(MethodSpec.constructorBuilder()
-                        .addParameter(ParameterSpec.builder(ClassName.bestGuess(actor.getSimpleName().toString()), "impl").build())
-                        .addCode(
-                        "mImpl = impl;\n"
-                        ).build())
                 .build();
 
-        JavaFile javaFile = JavaFile.builder(packageName, actorType).build();
+        JavaFile javaFile = JavaFile.builder(adaptorPackageName, actorType).indent("    ").build();
         try {
             JavaFileObject sourceFile =
                     processingEnv.getFiler().
-                            createSourceFile(packageName + "." + actorClassName, actor);
+                            createSourceFile(adaptorPackageName + "." + adaptorClassName, actorClass);
             Writer writer = sourceFile.openWriter();
             writer.write(javaFile.toString());
             writer.close();

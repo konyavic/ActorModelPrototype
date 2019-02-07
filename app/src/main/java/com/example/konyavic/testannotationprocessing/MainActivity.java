@@ -11,12 +11,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Log.d("testannotationprocessing", MyClassGenerated.hello());
-
-        UploaderModule uploader = new UploaderModuleImpl();
-        uploader.startForegroundLoop(1, "asdf");
-
-        UploaderModule uploader2 = new UploaderModuleActor(new UploaderModuleImpl());
-        uploader2.startForegroundLoop(2, "asdf");
+        MainStage stage = new MainStage(new NetworkActorAdaptor(new NetworkActor()),
+                new UploaderActorAdaptor(new UploaderActor(123)));
+        stage.getUploaderActor().uploadFiles();
     }
 }
