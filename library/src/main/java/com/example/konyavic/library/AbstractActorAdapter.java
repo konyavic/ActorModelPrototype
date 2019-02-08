@@ -7,11 +7,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadFactory;
 
-public abstract class AbstractActorAdapter {
+public abstract class AbstractActorAdapter<T> {
     final protected ExecutorService mExecutorService;
-    final Object mActor;
+    final private T mActor;
 
-    public AbstractActorAdapter(Object actor) {
+    public AbstractActorAdapter(T actor) {
         mActor = actor;
         mExecutorService = Executors.newSingleThreadExecutor(new ThreadFactory() {
             @Override
@@ -21,26 +21,21 @@ public abstract class AbstractActorAdapter {
         });
     }
 
-    public interface SyncedCall<T> {
-        T run(Object o);
+    public interface SyncedCall<T, V> {
+        V run(T o);
     }
 
-    <T> Future<T> syncFromAnotherActor(final SyncedCall<T> call) {
-        Future<T> result = mExecutorService.submit(new Callable<T>() {
+    protected <S> Future<S> syncFromAnotherActor(final SyncedCall<T, S> call) {
+        return mExecutorService.submit(new Callable<S>() {
             // TODO: collect execptions
             @Override
-            public T call() throws Exception {
+            public S call() throws Exception {
                 return call.run(mActor);
             }
         });
-        return result;
     }
 
-    protected <T> T getActor(Class<T> cls) {
-        return (T) mActor;
-    }
-
-    public void setStage(Object stage) {
-        ((AbstractActor) mActor).mStage = new WeakReference<>(stage);
+    protected T getActor() {
+        return mActor;
     }
 }

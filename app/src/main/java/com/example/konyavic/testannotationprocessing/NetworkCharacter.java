@@ -2,6 +2,6 @@ package com.example.konyavic.testannotationprocessing;
 
 import java.io.File;
 
-public interface NetworkActorInterface {
+public interface NetworkCharacter {
     Boolean putFile(String url, File file);
 }

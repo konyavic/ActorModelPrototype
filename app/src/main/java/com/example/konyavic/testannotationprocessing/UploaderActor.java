@@ -1,54 +1,41 @@
 package com.example.konyavic.testannotationprocessing;
 
-import android.util.Log;
-
-import com.example.konyavic.library.AbstractActor;
-import com.example.konyavic.library.AbstractActorAdapter;
 import com.example.konyavic.library.ActorClass;
 import com.example.konyavic.library.ActorMethod;
-import com.example.konyavic.library.ActorRef;
+import com.example.konyavic.library.StageActorRef;
 
 import java.io.File;
-import java.util.concurrent.ExecutionException;
+import java.lang.ref.WeakReference;
 
 @ActorClass
-public class UploaderActor extends AbstractActor implements UploaderActorInterface {
+public class UploaderActor implements UploaderCharacter {
+    private final Logger mLogger;
     private int mParam;
 
-    @ActorRef
-    NetworkActorInterface networkActor = null;
+    @StageActorRef
+    WeakReference<NetworkCharacter> networkCharacterRef = null;
 
-    UploaderActor(int param) {
+    @StageActorRef(sync = true)
+    WeakReference<NetworkCharacter> syncedNetworkCharacterRef = null;
+
+    UploaderActor(int param, Logger logger) {
         mParam = param;
+        mLogger = logger;
     }
 
     @Override
     @ActorMethod
     public void uploadFiles() {
-        Log.d("testannotationprocessing", "UploaderActor#uploadFiles " + Thread.currentThread().getName());
+        mLogger.log("UploaderActor#uploadFiles start");
 
-        MainStageInterface stage = (MainStageInterface) getStage();
+        mLogger.log("UploaderActor#uploadFiles call async");
+        NetworkCharacter networkCharacter = networkCharacterRef.get();
+        networkCharacter.putFile("url", new File("name"));
 
-        // putFile asynchronously
-        Log.d("testannotationprocessing", "UploaderActor#uploadFiles async call NetworkActor");
-        stage.getNetworkActor().putFile("url", new File("filename"));
+        mLogger.log("UploaderActor#uploadFiles call sync");
+        NetworkCharacter syncedNetworkCharacter = syncedNetworkCharacterRef.get();
+        syncedNetworkCharacter.putFile("url", new File("name"));
 
-        // putFile synchronously
-        Log.d("testannotationprocessing", "UploaderActor#uploadFiles sync call NetworkActor");
-        try {
-            Boolean result = sync(stage.getNetworkActor(), new AbstractActorAdapter.SyncedCall<Boolean>() {
-                @Override
-                public Boolean run(Object o) {
-                    NetworkActor networkAdapter = (NetworkActor) o;
-                    return networkAdapter.putFile("url", new File("filename"));
-                }
-            });
-        } catch (ExecutionException e) {
-            e.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        Log.d("testannotationprocessing", "UploaderActor#uploadFiles return");
+        mLogger.log("UploaderActor#uploadFiles end");
     }
 }

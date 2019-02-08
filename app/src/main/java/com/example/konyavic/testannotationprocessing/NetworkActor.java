@@ -1,25 +1,29 @@
 package com.example.konyavic.testannotationprocessing;
 
-import android.util.Log;
-
-import com.example.konyavic.library.AbstractActor;
 import com.example.konyavic.library.ActorClass;
 import com.example.konyavic.library.ActorMethod;
 
 import java.io.File;
 
 @ActorClass
-public class NetworkActor extends AbstractActor implements NetworkActorInterface {
-    NetworkActor() {
+public class NetworkActor implements NetworkCharacter {
+    private final Logger mLogger;
 
+    NetworkActor(Logger logger) {
+        mLogger = logger;
     }
 
     @Override
     @ActorMethod
     public Boolean putFile(final String url, final File file) {
         // do something
-        Log.d("testannotationprocessing", "NetworkActor#putFile " + Thread.currentThread().getName());
-        Log.d("testannotationprocessing", "NetworkActor#putFile return");
+        mLogger.log("NetworkActor#putFile start");
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        mLogger.log("NetworkActor#putFile end");
         return true;
     }
 }

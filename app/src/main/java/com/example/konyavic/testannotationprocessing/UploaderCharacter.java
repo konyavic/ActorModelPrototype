@@ -1,5 +1,5 @@
 package com.example.konyavic.testannotationprocessing;
 
-public interface UploaderActorInterface {
+public interface UploaderCharacter {
     void uploadFiles();
 }
